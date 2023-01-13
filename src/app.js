@@ -6,11 +6,13 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL)
-let db;
 
+let db; 
+ 
 try {
     await mongoClient.connect()
-    db = mongoClient.db("Batebapo")
+    const db = mongoClient.db() 
+
 } catch (error) {
     console.log('Deu erro no app')
 }
@@ -21,8 +23,10 @@ app.use(cors())
 
 
 app.post("/participants", async (req, res) => {
+    console.log(db)
     const { name } = req.body
-    try {
+
+    try { 
 
         const participante = await db.collection("participants").findOne({ name })
 
@@ -33,13 +37,12 @@ app.post("/participants", async (req, res) => {
         res.send("ok")
 
     } catch (err) {
+
         console.log(err)
-        res.status(422).send("O nome não foi salvo!")
+        res.status(422).send("O nome não foi salvo!") 
+
     }
 })
-
-
-
 
 
 
