@@ -127,8 +127,7 @@ app.post("/status", async (req, res) => {
     const now = dayjs();
     if (participante) {
         try {
-            const kkk = await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
-            console.log("esse", kkk)
+            await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
             return res.sendStatus(200);
         } catch (err) {
             console.log(err)
