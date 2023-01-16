@@ -11,14 +11,12 @@ app.use(express.json())
 app.use(cors())
 const PORT = 5000;
 
-
 const mongoClient = new MongoClient(process.env.DATABASE_URL)
 let db;
 
 await mongoClient.connect()
 db = mongoClient.db()
 console.log("Conectado ao banco de dados")
-
 
 const messageBodySchema = joi.object({
     to: joi.string().required(),
@@ -27,10 +25,18 @@ const messageBodySchema = joi.object({
 });
 const headerSchema = joi.string().required();
 
+const participantsBodySchema = joi.object({
+    name: joi.string().required(),
+});
+
+
 
 app.post("/participants", async (req, res) => {
-    console.log("entrou")
     const { name } = req.body;
+   
+    if (!req.body.name ) {
+        return res.sendStatus(422);
+    }
     const participante = await db.collection("participants").findOne(req.body)
 
     if (participante) {
@@ -44,19 +50,15 @@ app.post("/participants", async (req, res) => {
         return res.sendStatus(201);
 
     } catch (err) {
-
         console.log(err)
         return res.sendStatus(500)
-
     }
 })
 
 app.get("/participants", async (req, res) => {
-
     try {
         const listParticipants = await db.collection("participants").find({}).toArray();
         return res.send(listParticipants);
-
     } catch (err) {
         console.log(err);
         return res.sendStatus(500);
@@ -64,11 +66,16 @@ app.get("/participants", async (req, res) => {
 });
 
 app.post("/messages", async (req, res) => {
-
     const user = req.headers.user;
     const messageBody = req.body;
     const newUser = await db.collection("participants").findOne({ name: user });
-
+    
+    if (!req.body.to || !req.body.text || !req.body.type) {
+        res.sendStatus(422);
+    }
+    if (!req.headers.user) {
+        res.sendStatus(422);
+    }
     // if (validation.error) {
     //     const errors = validation.error.details.map((detail) => detail.message);
     //     return res.status(422).send(errors);
@@ -86,27 +93,26 @@ app.post("/messages", async (req, res) => {
         }
     }
 })
+
 app.get("/messages", async (req, res) => {
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
     const messageBody = req.body
+    if (req.body.name === 0 || req.body.name < 0) {
+        return res.sendStatus(422);
+    }
 
     try {
         const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
         const listMessages = buscarMessages.reverse().slice(0, limit)
         return res.send(listMessages);
-
     } catch (err) {
         console.log(err);
         return res.sendStatus(500);
     }
-
-
 });
 
-
 app.post("/status", async (req, res) => {
-    console.log("entrou status")
     const user = req.headers.user;
     const { name } = req.body;
     const participante = await db.collection("participants").findOne({ name: user })
@@ -116,40 +122,28 @@ app.post("/status", async (req, res) => {
     const now = dayjs();
     if (participante) {
         try {
-            await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
+            await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now() });
             return res.sendStatus(200);
         } catch (err) {
             console.log(err)
             return res.sendStatus(500)
-
         }
     }
 })
 
 setInterval(async () => {
-    console.log("inativo")
     try {
-        
         const now = dayjs();
-        const seconds = Date.now() - 10000;
-
-        // console.log("inativo", seconds)
-        // console.log("inativoooo", Date.now())
-
-        const userInactive = await db.collection("participants").find().toArray();
-        console.log("participants", userInactive)
-       
+        const seconds = now.valueOf() - 10000;
+        const userInactive = await db.collection("participants").find({ lastStatus: seconds }).toArray();
         if (userInactive.length) {
             userInactive.map(async (inactive) => {
                 if (Date.now() > seconds) {
-                    const dele = await db.collection('participants').deleteOne({laststatus: seconds});
-                    console.log("laststatus", {laststatus: seconds} )
-                    console.log("deletados", dele)
-                    const mes =await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
-        
-                    console.log("mensagens", mes)
+                    const participantes = await db.collection('participants').deleteOne({ _id: inactive._id });
+                    const messagens = await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
+                    console.log("participantes", participantes)
+                    console.log("messagens", messagens)
                 }
-                
             })
         }
     } catch (error) {
@@ -157,5 +151,4 @@ setInterval(async () => {
     }
 }, 15000);
 
-
-app.listen(PORT, () => console.log(`servidor rodando na porta ${PORT}`))
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`))
