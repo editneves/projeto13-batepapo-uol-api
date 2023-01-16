@@ -129,24 +129,33 @@ app.post("/status", async (req, res) => {
 setInterval(async () => {
     console.log("inativo")
     try {
+        
         const now = dayjs();
         const seconds = Date.now() - 10000;
-        console.log("inativo", seconds)
-        const userInactive = await db.collection("participants").find({ lastStatus: seconds }).toArray();
-        if (userInactive.length > 0) {
-            console.log("in", 1)
+
+        // console.log("inativo", seconds)
+        // console.log("inativoooo", Date.now())
+
+        const userInactive = await db.collection("participants").find().toArray();
+        console.log("participants", userInactive)
+       
+        if (userInactive.length) {
             userInactive.map(async (inactive) => {
-                console.log("in", 1)
-                //await db.collection('participants').deleteOne({_id: inactive.id  } );
-                await db.collection("participants").deleteMany({ laststatus: seconds });
-                console.log("in", inactive.id)
-                await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
+                if (Date.now() > seconds) {
+                    const dele = await db.collection('participants').deleteOne({laststatus: seconds});
+                    console.log("laststatus", {laststatus: seconds} )
+                    console.log("deletados", dele)
+                    const mes =await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
+        
+                    console.log("mensagens", mes)
+                }
+                
             })
         }
     } catch (error) {
         console.error(error);
     }
-}, 5000);
+}, 15000);
 
 
 app.listen(PORT, () => console.log(`servidor rodando na porta ${PORT}`))
