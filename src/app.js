@@ -141,10 +141,10 @@ setInterval(async () => {
     try {
         const now = dayjs();
         const seconds = now.valueOf() - 10000;
-        const userInactive = await db.collection("participants").find({ lastStatus: seconds }).toArray();
+        const userInactive = await db.collection("participants").find().toArray();
         if (userInactive.length) {
             userInactive.map(async (inactive) => {
-                if (Date.now() > seconds) {
+                if (userInactive.lastStatus > seconds) {
                     const participantes = await db.collection('participants').deleteOne({ _id: inactive._id });
                     const messagens = await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
                     console.log("participantes", participantes)
