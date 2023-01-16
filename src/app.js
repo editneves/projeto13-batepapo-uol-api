@@ -33,16 +33,14 @@ const participantsBodySchema = joi.object({
 
 app.post("/participants", async (req, res) => {
     const { name } = req.body;
-   
-    if (!req.body.name ) {
-        return res.sendStatus(422);
+    const validation = participantsBodySchema.validate(name, { abortEarly: true });
+    if (validation.error) {
+        return res.sendStatus(422)
     }
     const participante = await db.collection("participants").findOne(req.body)
-
     if (participante) {
         return res.sendStatus(409);
     }
-
     const now = dayjs();
     try {
         await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
@@ -54,6 +52,7 @@ app.post("/participants", async (req, res) => {
         return res.sendStatus(500)
     }
 })
+
 
 app.get("/participants", async (req, res) => {
     try {
@@ -68,20 +67,18 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req, res) => {
     const user = req.headers.user;
     const messageBody = req.body;
+    const validation = messageBodySchema.validate(messageBody, { abortEarly: true });
+    if (validation.error) {
+        return res.sendStatus(422)
+    }
+    const validationt = headerSchema.validate(user, { abortEarly: true });
+    if (validationt.error) {
+        return res.sendStatus(422)
+    }
     const newUser = await db.collection("participants").findOne({ name: user });
-    
-    if (!req.body.to || !req.body.text || !req.body.type) {
-        res.sendStatus(422);
+    if (!newUser) {
+        return res.sendStatus(422)
     }
-    if (!req.headers.user) {
-        res.sendStatus(422);
-    }
-    // if (validation.error) {
-    //     const errors = validation.error.details.map((detail) => detail.message);
-    //     return res.status(422).send(errors);
-    // }
-    // const validation = messageBodySchema.validate(messageBody, { abortEarly: false });
-
     const now = dayjs();
     if (newUser) {
         try {
@@ -122,7 +119,7 @@ app.post("/status", async (req, res) => {
     const now = dayjs();
     if (participante) {
         try {
-            await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now() });
+            await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
             return res.sendStatus(200);
         } catch (err) {
             console.log(err)
