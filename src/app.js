@@ -95,18 +95,27 @@ app.get("/messages", async (req, res) => {
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
     const messageBody = req.body
-    if (req.body.name === 0 || req.body.name < 0) {
+    const  id  = req.body.id;
+
+    if (limit === 0 || limit < 0) {
         return res.sendStatus(422);
     }
-
-    try {
-        const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
-        const listMessages = buscarMessages.reverse().slice(0, limit)
-        return res.send(listMessages);
-    } catch (err) {
-        console.log(err);
-        return res.sendStatus(500);
+    if (limit) {
+        try {
+            if (user != messageBody.to) {
+                const del = await db.collection('messages').deleteOne({to: 'private_message'});
+                //const del = await db.collection('messages').deleteOne({ _id: messages._id  });
+                console.log("entrei", del )
+            }
+            const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
+            const listMessages = buscarMessages.reverse().slice(0, limit)
+            return res.send(listMessages);
+        } catch (err) {
+            console.log(err);
+            return res.sendStatus(500);
+        }
     }
+
 });
 
 app.post("/status", async (req, res) => {
@@ -133,13 +142,14 @@ setInterval(async () => {
         const now = dayjs();
         const seconds = now.valueOf() - 10000;
         const userInactive = await db.collection("participants").find({ lastStatus: seconds }).toArray();
-        if (userInactive.length) {
+        if (userInactive.length > 0) {
             userInactive.map(async (inactive) => {
-                if (Date.now() > seconds) {
-                    const participantes = await db.collection('participants').deleteOne({ _id: inactive._id });
-                    const messagens = await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
-                    console.log("participantes", participantes)
-                    console.log("messagens", messagens)
+                const userInactive = await db.collection("participants").find({ lastStatus: seconds }).toArray();
+                if (userInactive.lastStatus > seconds) {
+                    await db.collection('participants').deleteOne({ _id: inactive._id });
+                    await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
+
+
                 }
             })
         }
