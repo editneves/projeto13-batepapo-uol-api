@@ -10,6 +10,7 @@ const app = express()
 app.use(express.json())
 app.use(cors())
 const PORT = 5000;
+
 const mongoClient = new MongoClient(process.env.DATABASE_URL)
 let db;
 
@@ -28,16 +29,20 @@ const participantsBodySchema = joi.object({
     name: joi.string().required(),
 });
 
+
+
 app.post("/participants", async (req, res) => {
     const { name } = req.body;
-    const validation = participantsBodySchema.validate(name, { abortEarly: true });
-    if (validation.error) {
-        return res.sendStatus(422)
+   
+    if (!req.body.name ) {
+        return res.sendStatus(422);
     }
     const participante = await db.collection("participants").findOne(req.body)
+
     if (participante) {
         return res.sendStatus(409);
     }
+
     const now = dayjs();
     try {
         await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
@@ -63,18 +68,20 @@ app.get("/participants", async (req, res) => {
 app.post("/messages", async (req, res) => {
     const user = req.headers.user;
     const messageBody = req.body;
-    const validation = messageBodySchema.validate(messageBody, { abortEarly: true });
-    if (validation.error) {
-        return res.sendStatus(422)
-    }
-    const validationt = headerSchema.validate(user, { abortEarly: true });
-    if (validationt.error) {
-        return res.sendStatus(422)
-    }
     const newUser = await db.collection("participants").findOne({ name: user });
-    if (!newUser) {
-        return res.sendStatus(422)
+    
+    if (!req.body.to || !req.body.text || !req.body.type) {
+        res.sendStatus(422);
     }
+    if (!req.headers.user) {
+        res.sendStatus(422);
+    }
+    // if (validation.error) {
+    //     const errors = validation.error.details.map((detail) => detail.message);
+    //     return res.status(422).send(errors);
+    // }
+    // const validation = messageBodySchema.validate(messageBody, { abortEarly: false });
+
     const now = dayjs();
     if (newUser) {
         try {
@@ -91,30 +98,18 @@ app.get("/messages", async (req, res) => {
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
     const messageBody = req.body
-    const semMessages = await db.collection("messages").find().toArray();
-    
-    if(semMessages.length=0){
-        await db.collection("messages").insertOne({ from: user, to: "Todos", text: "Entrou na sala...", type: "status", time: now.format('HH:mm:ss') })
-    }
-
-    if (!limit) {
-        const todasMessages = await db.collection("messages").find({to: 'Todos' }).toArray();
-        const listTodasMessages = todasMessages.reverse();
-    }
-    else if (limit === 0 || limit < 0) {
+    if (req.body.name === 0 || req.body.name < 0) {
         return res.sendStatus(422);
     }
-    else if (limit > 0) {
-        try {
-            const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
-            const listMessages = buscarMessages.reverse().slice(0, limit)
-            return res.send(listMessages);
-        } catch (err) {
-            console.log(err);
-            return req.sendStatus(500);
-        }
+
+    try {
+        const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
+        const listMessages = buscarMessages.reverse().slice(0, limit)
+        return res.send(listMessages);
+    } catch (err) {
+        console.log(err);
+        return res.sendStatus(500);
     }
-   
 });
 
 app.post("/status", async (req, res) => {
@@ -127,7 +122,7 @@ app.post("/status", async (req, res) => {
     const now = dayjs();
     if (participante) {
         try {
-            await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
+            await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now() });
             return res.sendStatus(200);
         } catch (err) {
             console.log(err)
@@ -140,10 +135,10 @@ setInterval(async () => {
     try {
         const now = dayjs();
         const seconds = now.valueOf() - 10000;
-        const userInactive = await db.collection("participants").find().toArray();
+        const userInactive = await db.collection("participants").find({ lastStatus: seconds }).toArray();
         if (userInactive.length) {
             userInactive.map(async (inactive) => {
-                if (userInactive.lastStatus > seconds) {
+                if (Date.now() > seconds) {
                     const participantes = await db.collection('participants').deleteOne({ _id: inactive._id });
                     const messagens = await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
                     console.log("participantes", participantes)
