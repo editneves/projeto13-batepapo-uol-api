@@ -92,7 +92,7 @@ app.get("/messages", async (req, res) => {
     const messageBody = req.body
 
     try {
-        const buscarMessages = await db.collection("messages").find( { from: user, to: user , to: 'Todos' }).toArray();
+        const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
         const listMessages = buscarMessages.reverse().slice(0, limit)
         return res.send(listMessages);
 
@@ -103,4 +103,50 @@ app.get("/messages", async (req, res) => {
 
 
 });
+
+
+app.post("/status", async (req, res) => {
+    console.log("entrou status")
+    const user = req.headers.user;
+    const { name } = req.body;
+    const participante = await db.collection("participants").findOne({ name: user })
+    if (!participante) {
+        return res.sendStatus(404);
+    }
+    const now = dayjs();
+    if (participante) {
+        try {
+            await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
+            return res.sendStatus(200);
+        } catch (err) {
+            console.log(err)
+            return res.sendStatus(500)
+
+        }
+    }
+})
+
+setInterval(async () => {
+    console.log("inativo")
+    try {
+        const now = dayjs();
+        const seconds = Date.now() - 10000;
+        console.log("inativo", seconds)
+        const userInactive = await db.collection("participants").find({ lastStatus: seconds }).toArray();
+        if (userInactive.length > 0) {
+            console.log("in", 1)
+            userInactive.map(async (inactive) => {
+                console.log("in", 1)
+                //await db.collection('participants').deleteOne({_id: inactive.id  } );
+                await db.collection("participants").deleteMany({ laststatus: seconds });
+                console.log("in", inactive.id)
+                await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
+            })
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}, 5000);
+
+
 app.listen(PORT, () => console.log(`servidor rodando na porta ${PORT}`))
