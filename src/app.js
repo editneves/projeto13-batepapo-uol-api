@@ -158,11 +158,11 @@ setInterval(async () => {
         const now = dayjs();
         const second = (now.valueOf() - 10000);
         const userInactive = await db.collection("participants").find({ lastStatus: { $lte: second } }).toArray();
-
+        
         if (userInactive.length > 0) {
             userInactive.map(async (inactive) => {
                 await db.collection("participants").deleteOne({ lastStatus: { $lte: second } });
-                await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time: now.format('HH:mm:ss') })
+                await db.collection("messages").insertOne({ from: inactive.name, to: "Todos", text: "sai da sala...", type: "status", time:  dayjs(now).format('HH:mm:ss') })
             })
         }
     } catch (error) {
