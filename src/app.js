@@ -29,25 +29,25 @@ const messageBodySchema = joi.object({
 });
 const headerSchema = joi.string().required();
 
-
-
-
-
 app.post("/participants", async (req, res) => {
-    const  name  = req.body;
-    const validation = participantsBodySchema.validate(name, { abortEarly: true });
+    const  {name}  = req.body;
+    console.log("recebe name ",name, req.body)
+    const validation = participantsBodySchema.validate(req.body, { abortEarly: true });
     if (validation.error) {
         return res.sendStatus(422)
     }
-    const participante = await db.collection("participants").findOne(name)
+    const participante = await db.collection("participants").findOne(req.body)
+    console.log("confe ",name, participante)
     if (participante) {
         return res.sendStatus(409);
     }
     const now = dayjs();
     try {
-        await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
-        await db.collection('messages').insertOne({ from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time: now.format('HH:mm:ss') });
-        return res.sendStatus(201);
+        const part = await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now()});
+        console.log("cadastro part ",part,({ ...req.body, lastStatus: Date.now()}))
+        const mEntr = await db.collection('messages').insertOne({ from: name.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: now.format('HH:mm:ss') });
+        console.log("mensaentra",mEntr, ({ from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time: now.format('HH:mm:ss') }) )
+        return res.sendStatus(201);              //{from: 'xxx', to: 'Todos', text: 'entra na sala...', type: 'status', time: 'HH:MM:SS'}
 
     } catch (err) {
         console.log(err)
@@ -58,6 +58,7 @@ app.post("/participants", async (req, res) => {
 app.get("/participants", async (req, res) => {
     try {
         const listParticipants = await db.collection("participants").find({}).toArray();
+        console.log(listParticipants)
         return res.send(listParticipants);
     } catch (err) {
         console.log(err);
