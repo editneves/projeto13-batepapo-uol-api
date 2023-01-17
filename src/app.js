@@ -28,6 +28,7 @@ const messageBodySchema = joi.object({
     type: joi.string().valid("message", "private_message").required(),
 });
 const headerSchema = joi.string().required();
+const limitSchema = joi.number();
 
 app.post("/participants", async (req, res) => {
     const { name } = req.body;
@@ -95,13 +96,16 @@ app.get("/messages", async (req, res) => {
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
 
-    if (limit === 0 || limit < 0 ) {
+    const validation = limitSchema.validate(limit, { abortEarly: true });
+    if (validation.error) {
+        return res.sendStatus(422)
+    }
+    if (limit === 0 || limit < 0) {
         return res.sendStatus(422);
     }
-    
     else if (limit) {
         try {
-            await db.collection('messages').deleteMany({ to: 'private_message'});
+            await db.collection('messages').deleteMany({ to: 'private_message' });
             const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
             const listMessages = buscarMessages.reverse().slice(0, limit)
             return res.send(listMessages);
@@ -118,7 +122,7 @@ app.get("/messages", async (req, res) => {
                 return res.send(listMessagesPublPriv);
             }
             else {
-                const listMessagesEntrada =  await db.collection("messages").find({ text: 'entra na sala...' }).toArray();
+                const listMessagesEntrada = await db.collection("messages").find({ text: 'entra na sala...' }).toArray();
                 return res.send(listMessagesEntrada);
             }
         } catch (err) {
@@ -128,9 +132,6 @@ app.get("/messages", async (req, res) => {
 
 
 });
-
-
-
 
 app.post("/status", async (req, res) => {
     const user = req.headers.user;
@@ -143,7 +144,7 @@ app.post("/status", async (req, res) => {
     const now = dayjs();
     if (participante) {
         try {
-            const newStatus = await db.collection('participants').updateOne( {name: user},{ $set: { lastStatus: now.valueOf()}});
+            const newStatus = await db.collection('participants').updateOne({ name: user }, { $set: { lastStatus: now.valueOf() } });
             return res.send(newStatus);
         } catch (err) {
             console.log(err)
