@@ -18,26 +18,28 @@ await mongoClient.connect()
 db = mongoClient.db()
 console.log("Conectado ao banco de dados")
 
-const messageBodySchema = joi.object({
-    to: joi.string().required(),
-    text: joi.string().required(),
-    type: joi.string().valid('message', 'private_message').required(),
-});
-const headerSchema = joi.string().required();
-
 const participantsBodySchema = joi.object({
     name: joi.string().required(),
 });
 
+const messageBodySchema = joi.object({
+    to: joi.string().required(),
+    text: joi.string().required(),
+    type: joi.string().valid("message", "private_message").required(),
+});
+const headerSchema = joi.string().required();
+
+
+
 
 
 app.post("/participants", async (req, res) => {
-    const { name } = req.body;
+    const  name  = req.body;
     const validation = participantsBodySchema.validate(name, { abortEarly: true });
     if (validation.error) {
         return res.sendStatus(422)
     }
-    const participante = await db.collection("participants").findOne(req.body)
+    const participante = await db.collection("participants").findOne(name)
     if (participante) {
         return res.sendStatus(409);
     }
@@ -53,7 +55,6 @@ app.post("/participants", async (req, res) => {
     }
 })
 
-
 app.get("/participants", async (req, res) => {
     try {
         const listParticipants = await db.collection("participants").find({}).toArray();
@@ -65,13 +66,14 @@ app.get("/participants", async (req, res) => {
 });
 
 app.post("/messages", async (req, res) => {
-    const user = req.headers.user;
+    const {user} = req.headers.user;
     const messageBody = req.body;
-    const validation = messageBodySchema.validate(messageBody, { abortEarly: true });
+
+    const validation = messageBodySchema.validate(messageBody,  { abortEarly: false });
     if (validation.error) {
         return res.sendStatus(422)
     }
-    const validationt = headerSchema.validate(user, { abortEarly: true });
+    const validationt = headerSchema.validate({from:user}, { abortEarly: true });
     if (validationt.error) {
         return res.sendStatus(422)
     }
