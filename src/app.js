@@ -42,7 +42,7 @@ app.post("/participants", async (req, res) => {
     const now = dayjs();
     try {
         await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now()});
-        await db.collection('messages').insertOne({ from: name.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: now.format('HH:mm:ss') });
+        await db.collection('messages').insertOne({ from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time:dayjs(now).format('HH:mm:ss') });
         return res.sendStatus(201); 
     } catch (err) {
         console.log(err)
@@ -76,15 +76,13 @@ app.post("/messages", async (req, res) => {
         return res.sendStatus(422)
     }
     const newUser = await db.collection("participants").findOne({ name: user });
-    console.log(newUser)
     if (!newUser) {
         return res.sendStatus(422)
     }
     const now = dayjs();
      if (newUser) {
         try {
-           const mensagem =  await db.collection('messages').insertOne({from: user, messageBody,  time: now.format('HH:mm:ss') });
-           console.log(mensagem,({ ...req.body, from: user, time: now.format('HH:mm:ss') })) 
+           await db.collection('messages').insertOne({from: user, ...req.body,  time: dayjs(now).format('HH:mm:ss') });
            return res.sendStatus(201);
         } catch (err) {
             console.log(err);
@@ -96,24 +94,30 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", async (req, res) => {
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
-    const messageBody = req.body
-    const id = req.body.id;
+    //const id = req.body.id;
+    console.log(limit)
+    if (!limit) {
+    const todasMessages = await db.collection("messages").find({}).toArray();
+    }      
+    
 
     if (limit === 0 || limit < 0) {
         return res.sendStatus(422);
     }
     if (limit) {
-        try {
-            if (user != messageBody.to) {
-                await db.collection('messages').deleteMany({ to: 'private_message' });
-            }
-            const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
-            const listMessages = buscarMessages.reverse().slice(0, limit)
-            return res.send(listMessages);
-        } catch (err) {
-            console.log(err);
-            return res.sendStatus(500);
-        }
+        console.log("tem limite")
+        // try {
+        //     if (user != todasMessages.to) {
+        //         await db.collection('messages').deleteMany({ to: 'private_message' });
+        //     }
+        //     const buscarMessages = await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
+            
+        //     const listMessages = buscarMessages.reverse().slice(0, limit)
+        //     return res.send(listMessages);
+        // } catch (err) {
+        //     console.log(err);
+        //     return res.sendStatus(500);
+        // }
     }
 
 });
