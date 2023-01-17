@@ -126,19 +126,20 @@ app.post("/status", async (req, res) => {
     const user = req.headers.user;
     const { name } = req.body;
     const participante = await db.collection("participants").findOne({ name: user })
+    
     if (!participante) {
         return res.sendStatus(404);
     }
     const now = dayjs();
-    if (participante) {
+     if (participante) {  
         try {
-            await db.collection('participants').insertOne({ ...req.body, lastStatus: now.valueOf() });
+            await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now() });
             return res.sendStatus(200);
         } catch (err) {
             console.log(err)
             return res.sendStatus(500)
         }
-    }
+     }
 })
 
 setInterval(async () => {
