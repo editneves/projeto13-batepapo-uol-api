@@ -31,24 +31,19 @@ const headerSchema = joi.string().required();
 
 app.post("/participants", async (req, res) => {
     const  {name}  = req.body;
-    console.log("recebe name ",name, req.body)
     const validation = participantsBodySchema.validate(req.body, { abortEarly: true });
     if (validation.error) {
         return res.sendStatus(422)
     }
     const participante = await db.collection("participants").findOne(req.body)
-    console.log("confe ",name, participante)
     if (participante) {
         return res.sendStatus(409);
     }
     const now = dayjs();
     try {
-        const part = await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now()});
-        console.log("cadastro part ",part,({ ...req.body, lastStatus: Date.now()}))
-        const mEntr = await db.collection('messages').insertOne({ from: name.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: now.format('HH:mm:ss') });
-        console.log("mensaentra",mEntr, ({ from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time: now.format('HH:mm:ss') }) )
-        return res.sendStatus(201);              //{from: 'xxx', to: 'Todos', text: 'entra na sala...', type: 'status', time: 'HH:MM:SS'}
-
+        await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now()});
+        await db.collection('messages').insertOne({ from: name.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: now.format('HH:mm:ss') });
+        return res.sendStatus(201); 
     } catch (err) {
         console.log(err)
         return res.sendStatus(500)
@@ -57,8 +52,7 @@ app.post("/participants", async (req, res) => {
 
 app.get("/participants", async (req, res) => {
     try {
-        const listParticipants = await db.collection("participants").find({}).toArray();
-        console.log(listParticipants)
+        const listParticipants = await db.collection("participants").find().toArray();
         return res.send(listParticipants);
     } catch (err) {
         console.log(err);
@@ -67,26 +61,31 @@ app.get("/participants", async (req, res) => {
 });
 
 app.post("/messages", async (req, res) => {
-    const {user} = req.headers.user;
+    const user = req.headers.user;
     const messageBody = req.body;
 
-    const validation = messageBodySchema.validate(messageBody,  { abortEarly: false });
+    console.log(user,req.headers.user, messageBody , req.body )
+
+    const validation = messageBodySchema.validate(messageBody,  { abortEarly: true });
     if (validation.error) {
-        return res.sendStatus(422)
+        return res.status(422).send(validation.error.details)
     }
-    const validationt = headerSchema.validate({from:user}, { abortEarly: true });
+   
+    const validationt = headerSchema.validate(user, { abortEarly: true });
     if (validationt.error) {
         return res.sendStatus(422)
     }
     const newUser = await db.collection("participants").findOne({ name: user });
+    console.log(newUser)
     if (!newUser) {
         return res.sendStatus(422)
     }
     const now = dayjs();
-    if (newUser) {
+     if (newUser) {
         try {
-            await db.collection('messages').insertOne({ ...req.body, from: user, time: now.format('HH:mm:ss') });
-            return res.sendStatus(201);
+           const mensagem =  await db.collection('messages').insertOne({from: user, messageBody,  time: now.format('HH:mm:ss') });
+           console.log(mensagem,({ ...req.body, from: user, time: now.format('HH:mm:ss') })) 
+           return res.sendStatus(201);
         } catch (err) {
             console.log(err);
             return res.sendStatus(500);
