@@ -95,8 +95,7 @@ app.get("/messages", async (req, res) => {
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
 
-    console.log(limit)
-    if (limit === 0 || limit < 0) {
+    if (limit === 0 || limit < 0 ) {
         return res.sendStatus(422);
     }
     
@@ -144,8 +143,8 @@ app.post("/status", async (req, res) => {
     const now = dayjs();
     if (participante) {
         try {
-            await db.collection('participants').updateOne({ ...req.body, lastStatus: Date.now() });
-            return res.sendStatus(200);
+            const newStatus = await db.collection('participants').updateOne( {name: user},{ $set: { lastStatus: now.valueOf()}});
+            return res.send(newStatus);
         } catch (err) {
             console.log(err)
             return res.sendStatus(500)
