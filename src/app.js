@@ -132,23 +132,6 @@ app.get("/messages", async (req, res) => {
 
 
 
-// app.get("/messages", async (req, res) => {
-//     const user = req.headers.user;
-//     try {
-//         const todasMessages = await db.collection("messages").find({}).toArray();
-//         if (todasMessages) {
-//             await db.collection("messages").find({ from: user, to: user, to: 'Todos' }).toArray();
-//             return res.sendStatus(200);
-//         }
-//         else {
-//             await db.collection("messages").find({ text: 'entra na sala...' }).toArray();
-//             return res.sendStatus(200);
-//         }
-//     } catch (err) {
-//         console.log(err);
-//     }
-// });
-
 
 app.post("/status", async (req, res) => {
     const user = req.headers.user;
@@ -161,7 +144,7 @@ app.post("/status", async (req, res) => {
     const now = dayjs();
     if (participante) {
         try {
-            await db.collection('participants').insertOne({ ...req.body, lastStatus: Date.now() });
+            await db.collection('participants').updateOne({ ...req.body, lastStatus: Date.now() });
             return res.sendStatus(200);
         } catch (err) {
             console.log(err)
